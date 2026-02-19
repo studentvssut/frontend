@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zenova Tech — Telegram Forwarder</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --z-blue: #00c6ff;
+    --z-blue2: #0072ff;
+    --z-dark: #060b18;
+    --z-card: #0b1325;
+    --z-border: #162040;
+    --z-muted: #4a5a7a;
+    --z-text: #d0daf0;
+    --z-green: #00e676;
+    --z-red: #ff4444;
+    --z-yellow: #ffd740;
+    --z-purple: #b388ff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--z-dark); color: var(--z-text); font-family: 'Inter', sans-serif; min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* ── ZENOVA HEADER ── */
+  .z-header {
+    background: linear-gradient(135deg, #04091a 0%, #080f22 60%, #04091a 100%);
+    border-bottom: 1px solid #00c6ff22;
+    padding: 0 28px;
+    display: flex;
+    align-items: center;
+    min-height: 62px;
+    gap: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .z-header::after {
+    content:'';
+    position:absolute;
+    bottom:0;left:0;right:0;height:1.5px;
+    background:linear-gradient(90deg,transparent,var(--z-blue),var(--z-blue2),var(--z-blue),transparent);
+  }
+  .z-glow { position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 20% 50%,#00c6ff0b 0%,transparent 55%); }
+  .z-logo { display:flex;align-items:center;gap:12px; }
+  .z-icon { width:40px;height:40px;background:linear-gradient(135deg,var(--z-blue),var(--z-blue2));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 18px #00c6ff33;flex-shrink:0; }
+  .z-name { font-family:'Syne',sans-serif;font-size:19px;font-weight:900;letter-spacing:3px;text-transform:uppercase;background:linear-gradient(90deg,var(--z-blue),#80e8ff,#fff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text; }
+  .z-sub { font-size:10px;color:#00c6ff66;letter-spacing:2px;text-transform:uppercase;margin-top:1px; }
+  .z-divider { width:1px;height:36px;background:linear-gradient(180deg,transparent,var(--z-border),transparent); }
+  .z-product { display:flex;align-items:center;gap:10px; }
+  .z-prod-icon { width:34px;height:34px;background:#00c6ff0f;border:1px solid #00c6ff25;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px; }
+  .z-prod-name { font-size:13px;font-weight:600;color:#c9d8f0; }
+  .z-prod-ver { font-size:10px;color:var(--z-muted);margin-top:2px; }
+  .z-header-actions { margin-left:auto;display:flex;align-items:center;gap:10px; }
+  .z-pill { background:#00c6ff0f;border:1px solid #00c6ff28;color:var(--z-blue);font-size:11px;padding:4px 12px;border-radius:20px;letter-spacing:1px;text-transform:uppercase;font-weight:600; }
+
+  /* ── NAV TABS ── */
+  .nav-tabs { background:#080f20;border-bottom:1px solid var(--z-border);display:flex;align-items:center;padding:0 28px;gap:4px; }
+  .nav-tab { padding:12px 18px;font-size:12px;font-weight:500;color:var(--z-muted);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;display:flex;align-items:center;gap:7px;text-transform:uppercase;letter-spacing:0.5px;font-family:'DM Mono',monospace; }
+  .nav-tab:hover { color:var(--z-text); }
+  .nav-tab.active { color:var(--z-blue);border-bottom-color:var(--z-blue); }
+  .nav-right { margin-left:auto;display:flex;align-items:center;gap:12px; }
+  .time-info { font-size:12px;color:var(--z-muted);font-family:'DM Mono',monospace; }
+  .time-info span { color:var(--z-text); }
+  .pause-btn { padding:8px 20px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s;background:var(--z-yellow);color:#0d1117;min-width:115px;font-family:'DM Mono',monospace; }
+  .pause-btn:hover { opacity:0.85;transform:scale(1.03); }
+  .pause-btn.resume { background:var(--z-green);color:#0d1117; }
+
+  .page { display:none; }
+  .page.active { display:block; }
+
+  /* ── STATUS BAR ── */
+  .status-bar { background:#07101f;border-bottom:1px solid var(--z-border);padding:8px 28px;display:flex;gap:20px;font-size:12px;color:var(--z-muted);flex-wrap:wrap;align-items:center;font-family:'DM Mono',monospace; }
+  .status-bar span { color:var(--z-blue);font-weight:600; }
+
+  /* ── CARDS ── */
+  .grid { display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:18px 28px; }
+  .card { background:var(--z-card);border:1px solid var(--z-border);border-radius:12px;padding:18px;position:relative;overflow:hidden;transition:opacity 0.4s; }
+  .card.dimmed { opacity:0.35; }
+  .card::before { content:'';position:absolute;top:0;left:0;right:0;height:2px; }
+  .card.blue::before { background:var(--z-blue); }
+  .card.green::before { background:var(--z-green); }
+  .card.red::before { background:var(--z-red); }
+  .card.purple::before { background:var(--z-purple); }
+  .card-label { font-size:10px;color:var(--z-muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;font-family:'DM Mono',monospace; }
+  .card-value { font-size:30px;font-weight:700;color:#e8f0ff;font-family:'Syne',sans-serif; }
+  .card-sub { font-size:11px;color:var(--z-muted);margin-top:4px; }
+
+  /* ── PROGRESS ── */
+  .progress-wrap { padding:0 28px 18px; }
+  .progress-label { display:flex;justify-content:space-between;font-size:11px;color:var(--z-muted);margin-bottom:6px;font-family:'DM Mono',monospace; }
+  .progress-bar { height:7px;background:var(--z-border);border-radius:8px;overflow:hidden; }
+  .progress-fill { height:100%;background:linear-gradient(90deg,var(--z-blue),var(--z-blue2),var(--z-purple));border-radius:8px;transition:width 1s;box-shadow:0 0 8px #00c6ff30; }
+
+  /* ── PANELS ── */
+  .bottom-grid { display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;padding:0 28px 20px; }
+  .panel { background:var(--z-card);border:1px solid var(--z-border);border-radius:12px;padding:16px;transition:opacity 0.4s; }
+  .panel.dimmed { opacity:0.35; }
+  .panel-title { font-size:11px;color:var(--z-muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:1.5px;border-bottom:1px solid var(--z-border);padding-bottom:10px;font-family:'DM Mono',monospace; }
+
+  .group-row { display:flex;align-items:center;padding:7px 0;border-bottom:1px solid var(--z-border);font-size:12px; }
+  .group-row:last-child { border-bottom:none; }
+  .group-name { color:var(--z-text);min-width:72px;font-family:'DM Mono',monospace; }
+  .group-bar-wrap { flex:1;height:4px;background:var(--z-border);border-radius:4px;overflow:hidden;margin:0 10px; }
+  .group-bar { height:100%;background:linear-gradient(90deg,var(--z-blue),var(--z-green));border-radius:4px;transition:width 0.5s; }
+  .group-count { color:var(--z-green);font-weight:700;min-width:28px;text-align:right;font-family:'DM Mono',monospace; }
+
+  .acc-card { background:#07101f;border:1px solid var(--z-border);border-radius:8px;padding:11px;margin-bottom:9px;display:flex;align-items:center;gap:11px; }
+  .acc-icon { width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0; }
+  .acc-name { font-size:13px;color:var(--z-text);font-weight:600;font-family:'DM Mono',monospace; }
+  .acc-stat { font-size:10px;color:var(--z-muted);margin-top:2px; }
+  .acc-count { font-size:16px;font-weight:700;margin-left:auto;font-family:'Syne',sans-serif; }
+
+  .log-panel { font-size:11px;max-height:210px;overflow-y:auto;font-family:'DM Mono',monospace; }
+  .log-entry { padding:5px 0;border-bottom:1px solid var(--z-border);display:flex;gap:10px; }
+  .log-time { color:var(--z-muted);flex-shrink:0; }
+  .log-ok { color:var(--z-green); }
+  .log-fail { color:var(--z-red); }
+  .log-info { color:var(--z-blue); }
+  .log-warn { color:var(--z-yellow); }
+
+  .timer-ring { display:flex;align-items:center;justify-content:center;flex-direction:column; }
+  .ring-svg { transform:rotate(-90deg); }
+  .ring-bg { fill:none;stroke:var(--z-border);stroke-width:8; }
+  .ring-fill { fill:none;stroke:var(--z-blue);stroke-width:8;stroke-linecap:round;stroke-dasharray:283;transition:stroke-dashoffset 1s linear; }
+  .ring-text { font-size:20px;font-weight:700;color:var(--z-blue);margin-top:-8px;font-family:'Syne',sans-serif; }
+  .ring-sub { font-size:10px;color:var(--z-muted);margin-top:4px;font-family:'DM Mono',monospace; }
+
+  .success-rate { font-size:26px;font-weight:700;text-align:center;margin:10px 0 4px;font-family:'Syne',sans-serif; }
+  .rate-label { text-align:center;font-size:10px;color:var(--z-muted);font-family:'DM Mono',monospace; }
+
+  .live-badge { background:var(--z-red);color:#fff;font-size:10px;padding:3px 8px;border-radius:20px;animation:blink 1.5s infinite;font-weight:700;font-family:'DM Mono',monospace; }
+  .paused-badge { background:var(--z-yellow);color:#0d1117;font-size:10px;padding:3px 8px;border-radius:20px;font-weight:700;display:none;font-family:'DM Mono',monospace; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ══ SETTINGS PAGE ══ */
+  .settings-page { padding:24px 28px; }
+  .settings-title { font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#e8f0ff;margin-bottom:4px; }
+  .settings-sub { font-size:13px;color:var(--z-muted);margin-bottom:28px; }
+  .settings-grid { display:grid;grid-template-columns:1fr 1fr;gap:20px; }
+  .settings-card { background:var(--z-card);border:1px solid var(--z-border);border-radius:14px;padding:22px;position:relative;overflow:hidden;margin-bottom:18px; }
+  .settings-card::before { content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--z-blue),var(--z-blue2)); }
+  .sc-title { font-size:13px;font-weight:700;color:#e8f0ff;margin-bottom:4px;font-family:'Syne',sans-serif;letter-spacing:1px; }
+  .sc-sub { font-size:11px;color:var(--z-muted);margin-bottom:18px;font-family:'DM Mono',monospace; }
+
+  .acc-setting-row { background:#07101f;border:1px solid var(--z-border);border-radius:10px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:14px;transition:border-color 0.2s; }
+  .acc-setting-row:hover { border-color:#00c6ff33; }
+  .acc-num { width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;font-family:'Syne',sans-serif;flex-shrink:0; }
+  .acc-fields { flex:1;display:flex;flex-direction:column;gap:8px; }
+  .field-row { display:flex;gap:8px;align-items:center; }
+  .field-label { font-size:10px;color:var(--z-muted);min-width:60px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:1px; }
+  .field-input { flex:1;background:#0a1428;border:1px solid var(--z-border);border-radius:7px;padding:7px 11px;color:var(--z-text);font-size:12px;font-family:'DM Mono',monospace;outline:none;transition:border-color 0.2s; }
+  .field-input:focus { border-color:var(--z-blue);box-shadow:0 0 0 2px #00c6ff15; }
+  .field-input::placeholder { color:var(--z-muted); }
+  .acc-status { width:8px;height:8px;border-radius:50%;flex-shrink:0; }
+  .acc-status.active { background:var(--z-green);box-shadow:0 0 6px var(--z-green); }
+  .acc-status.inactive { background:var(--z-muted); }
+
+  .group-setting-row { background:#07101f;border:1px solid var(--z-border);border-radius:10px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px; }
+  .grp-num { font-size:11px;color:var(--z-muted);min-width:22px;font-family:'DM Mono',monospace; }
+  .grp-input { flex:1;background:#0a1428;border:1px solid var(--z-border);border-radius:7px;padding:7px 11px;color:var(--z-text);font-size:12px;font-family:'DM Mono',monospace;outline:none;transition:border-color 0.2s; }
+  .grp-input:focus { border-color:var(--z-blue);box-shadow:0 0 0 2px #00c6ff15; }
+  .grp-input::placeholder { color:var(--z-muted); }
+  .grp-dot { width:7px;height:7px;border-radius:50%;background:var(--z-green);box-shadow:0 0 5px var(--z-green);flex-shrink:0; }
+
+  .setting-row { margin-bottom:16px; }
+  .setting-label { font-size:11px;color:var(--z-muted);margin-bottom:6px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:1px; }
+  .setting-input { width:100%;background:#07101f;border:1px solid var(--z-border);border-radius:8px;padding:10px 14px;color:var(--z-text);font-size:13px;font-family:'DM Mono',monospace;outline:none;transition:border-color 0.2s; }
+  .setting-input:focus { border-color:var(--z-blue);box-shadow:0 0 0 2px #00c6ff15; }
+  .interval-presets { display:flex;gap:6px;flex-wrap:wrap;margin-top:8px; }
+  .preset-btn { background:#07101f;border:1px solid var(--z-border);color:var(--z-muted);font-size:11px;padding:5px 12px;border-radius:20px;cursor:pointer;transition:all 0.2s;font-family:'DM Mono',monospace; }
+  .preset-btn:hover { border-color:var(--z-blue);color:var(--z-blue); }
+  .preset-btn.selected { background:#00c6ff15;border-color:var(--z-blue);color:var(--z-blue); }
+  .save-btn { width:100%;padding:13px;border-radius:10px;border:none;background:linear-gradient(90deg,var(--z-blue),var(--z-blue2));color:#fff;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.2s;margin-top:6px;font-family:'Syne',sans-serif;letter-spacing:1px;box-shadow:0 0 20px #00c6ff25; }
+  .save-btn:hover { opacity:0.88;transform:translateY(-1px); }
+  .reset-btn { width:100%;padding:13px;border-radius:10px;border:1px solid var(--z-red);background:transparent;color:var(--z-red);font-size:14px;font-weight:700;cursor:pointer;transition:all 0.2s;margin-top:6px;font-family:'Syne',sans-serif;letter-spacing:1px; }
+  .reset-btn:hover { background:#ff444415;transform:translateY(-1px); }
+
+  /* TOAST */
+  .toast { position:fixed;bottom:24px;right:24px;background:var(--z-card);border:1px solid var(--z-green);border-radius:10px;padding:14px 20px;font-size:13px;color:var(--z-green);font-family:'DM Mono',monospace;transform:translateY(80px);opacity:0;transition:all 0.3s ease;z-index:9999;box-shadow:0 0 20px #00e67620; }
+  .toast.show { transform:translateY(0);opacity:1; }
+
+  /* PAUSE OVERLAY */
+  #pauseOverlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:999;justify-content:center;align-items:center; }
+  #pauseOverlay.show { display:flex; }
+  .pause-modal { background:var(--z-card);border:2px solid var(--z-yellow);border-radius:20px;padding:46px 66px;text-align:center;animation:popIn 0.2s ease; }
+  @keyframes popIn { from{transform:scale(0.88);opacity:0} to{transform:scale(1);opacity:1} }
+  .pause-icon { font-size:50px;margin-bottom:12px; }
+  .pause-title { font-size:26px;font-weight:900;color:var(--z-yellow);margin-bottom:8px;font-family:'Syne',sans-serif; }
+  .pause-sub { font-size:13px;color:var(--z-muted);margin-bottom:10px; }
+  .pause-stats-txt { font-size:13px;color:var(--z-blue);margin-bottom:28px;font-family:'DM Mono',monospace; }
+  .resume-btn { background:var(--z-green);color:#0d1117;border:none;padding:13px 42px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;font-family:'Syne',sans-serif; }
+  .resume-btn:hover { opacity:0.85;transform:scale(1.03); }
+  .modal-brand { margin-top:18px;font-size:10px;color:#00c6ff33;letter-spacing:2px;font-family:'DM Mono',monospace; }
+
+  /* FOOTER */
+  .z-footer { margin-top:auto;background:linear-gradient(135deg,#03070f,#060c1c);border-top:1px solid #00c6ff18;padding:13px 28px;display:flex;align-items:center;justify-content:space-between;position:relative; }
+  .z-footer::before { content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,#00c6ff44,transparent); }
+  .footer-left { display:flex;align-items:center;gap:10px; }
+  .footer-icon { width:24px;height:24px;background:linear-gradient(135deg,var(--z-blue),var(--z-blue2));border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 0 8px #00c6ff25; }
+  .footer-name { font-size:12px;font-weight:900;letter-spacing:2px;text-transform:uppercase;background:linear-gradient(90deg,var(--z-blue),#80e8ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-family:'Syne',sans-serif; }
+  .footer-sep { color:var(--z-border);margin:0 8px; }
+  .footer-tag { font-size:11px;color:var(--z-muted);font-family:'DM Mono',monospace; }
+  .footer-right { font-size:11px;color:#1e2a44;font-family:'DM Mono',monospace; }
+  .footer-right span { color:#00c6ff33; }
+</style>
+</head>
+<body>
+
+<div id="pauseOverlay">
+  <div class="pause-modal">
+    <div class="pause-icon">⏸</div>
+    <div class="pause-title">PAUSED</div>
+    <div class="pause-sub">All forwarding stopped. Progress saved.</div>
+    <div class="pause-stats-txt" id="pauseStatsTxt">Round 0 | ✅ 0 forwarded</div>
+    <button class="resume-btn" onclick="togglePause()">▶ &nbsp;RESUME FORWARDING</button>
+    <div class="modal-brand">⚡ ZENOVA TECH</div>
+  </div>
+</div>
+
+<div class="toast" id="toast">✅ Settings saved successfully!</div>
+
+<!-- ZENOVA BRANDED HEADER -->
+<div class="z-header">
+  <div class="z-glow"></div>
+  <div class="z-logo">
+    <div class="z-icon">⚡</div>
+    <div>
+      <div class="z-name">Zenova Tech</div>
+      <div class="z-sub">Automation · Intelligence · Scale</div>
+    </div>
+  </div>
+  <div class="z-divider"></div>
+  <div class="z-product">
+    <div class="z-prod-icon">📡</div>
+    <div>
+      <div class="z-prod-name">Telegram Forwarder Pro</div>
+      <div class="z-prod-ver">v2.0 · 3 Accounts · 9 Groups</div>
+    </div>
+  </div>
+  <div class="z-header-actions">
+    <div class="z-pill">⚡ Pro Tool</div>
+  </div>
+</div>
+
+<!-- NAV TABS -->
+<div class="nav-tabs">
+  <div class="nav-tab active" id="tab-dashboard" onclick="switchTab('dashboard')">📊 Dashboard</div>
+  <div class="nav-tab" id="tab-settings" onclick="switchTab('settings')">⚙️ Settings</div>
+  <div class="nav-right">
+    <div class="time-info">Started: <span id="startTimeDisplay">--:--:--</span> &nbsp;|&nbsp; Ends: <span id="endTimeDisplay">--:--:--</span></div>
+    <button class="pause-btn" id="pauseBtn" onclick="togglePause()">⏸ &nbsp;PAUSE</button>
+  </div>
+</div>
+
+<!-- DASHBOARD PAGE -->
+<div class="page active" id="page-dashboard">
+  <div class="status-bar">
+    <div>Source: <span id="sb-source">@source_channel</span></div>
+    <div>Groups: <span>9</span></div>
+    <div>Accounts: <span>3</span></div>
+    <div>Interval: <span id="sb-interval">50 sec</span></div>
+    <div>Duration: <span>3 Hours</span></div>
+    <span class="live-badge" id="liveBadge">● LIVE</span>
+    <span class="paused-badge" id="pausedBadge">⏸ PAUSED</span>
+    <div id="statusState" style="margin-left:auto;color:var(--z-green);font-weight:700;font-family:'DM Mono',monospace;">🟢 RUNNING</div>
+  </div>
+
+  <div class="grid">
+    <div class="card blue" id="c1"><div class="card-label">Total Rounds</div><div class="card-value" id="rounds">0</div><div class="card-sub">of 216 planned</div></div>
+    <div class="card green" id="c2"><div class="card-label">✅ Successful</div><div class="card-value" id="success">0</div><div class="card-sub">messages forwarded</div></div>
+    <div class="card red" id="c3"><div class="card-label">❌ Failed</div><div class="card-value" id="failed">0</div><div class="card-sub">errors</div></div>
+    <div class="card purple" id="c4"><div class="card-label">Total Forwards</div><div class="card-value" id="total">0</div><div class="card-sub">of 1,944 target</div></div>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-label"><span>3-Hour Progress</span><span id="progressPct">0%</span></div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  </div>
+
+  <div class="bottom-grid">
+    <div class="panel" id="p1">
+      <div class="panel-title">📢 Group Performance</div>
+      <div id="groupList"></div>
+    </div>
+    <div class="panel" id="p2">
+      <div class="panel-title">📡 Account Usage</div>
+      <div id="accList"></div>
+      <div style="margin-top:14px;border-top:1px solid var(--z-border);padding-top:14px;">
+        <div class="timer-ring">
+          <svg class="ring-svg" width="96" height="96" viewBox="0 0 100 100">
+            <circle class="ring-bg" cx="50" cy="50" r="45"/>
+            <circle class="ring-fill" id="timerRing" cx="50" cy="50" r="45" stroke-dashoffset="0"/>
+          </svg>
+          <div class="ring-text" id="nextIn">50s</div>
+          <div class="ring-sub" id="timerLabel">next round in</div>
+        </div>
+      </div>
+    </div>
+    <div class="panel" id="p3">
+      <div class="panel-title">📋 Live Log</div>
+      <div class="log-panel" id="logPanel"></div>
+      <div style="margin-top:10px;border-top:1px solid var(--z-border);padding-top:10px;">
+        <div class="success-rate" id="successRate">100%</div>
+        <div class="rate-label">Success Rate</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS PAGE -->
+<div class="page" id="page-settings">
+  <div class="settings-page">
+    <div class="settings-title">⚙️ Configuration</div>
+    <div class="settings-sub">Update your API accounts, target groups, source channel and interval — changes apply on save.</div>
+    <div class="settings-grid">
+
+      <!-- LEFT COL -->
+      <div>
+        <div class="settings-card">
+          <div class="sc-title">📡 API Accounts (User IDs)</div>
+          <div class="sc-sub">Your 3 Telegram API credentials — edit and save anytime</div>
+          <div id="accountsForm"></div>
+        </div>
+        <div class="settings-card">
+          <div class="sc-title">🔧 Forwarder Settings</div>
+          <div class="sc-sub">Source channel and forwarding interval</div>
+          <div class="setting-row">
+            <div class="setting-label">Source Channel</div>
+            <input class="setting-input" id="sourceInput" placeholder="@channel_username or -100123456789"/>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label">Message ID to Forward</div>
+            <input class="setting-input" id="msgIdInput" placeholder="e.g. 147  (right-click message → copy link → last number)"/>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label">Interval (seconds)</div>
+            <input class="setting-input" id="intervalInput" placeholder="50" type="number" min="10"/>
+            <div class="interval-presets">
+              <div class="preset-btn" onclick="setPreset(20)">20s</div>
+              <div class="preset-btn" onclick="setPreset(30)">30s</div>
+              <div class="preset-btn selected" onclick="setPreset(50)">50s</div>
+              <div class="preset-btn" onclick="setPreset(60)">60s</div>
+              <div class="preset-btn" onclick="setPreset(120)">2m</div>
+              <div class="preset-btn" onclick="setPreset(300)">5m</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:6px;"><button class="save-btn" style="margin-top:0;" onclick="saveSettings()">💾 &nbsp;SAVE & APPLY</button><button class="reset-btn" style="margin-top:0;" onclick="resetSettings()">🔄 &nbsp;RESET</button></div>
+        </div>
+      </div>
+
+      <!-- RIGHT COL -->
+      <div>
+        <div class="settings-card">
+          <div class="sc-title">📢 Target Groups</div>
+          <div class="sc-sub">9 destination groups — update usernames or IDs anytime</div>
+          <div id="groupsForm"></div>
+          <button class="save-btn" style="margin-top:14px;" onclick="saveSettings()">💾 &nbsp;SAVE GROUPS</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ZENOVA FOOTER -->
+<div class="z-footer">
+  <div class="footer-left">
+    <div class="footer-icon">⚡</div>
+    <div class="footer-name">Zenova Tech</div>
+    <div class="footer-sep">·</div>
+    <div class="footer-tag">Developed with precision. Built to scale.</div>
+  </div>
+  <div class="footer-right">© 2025 <span>Zenova Tech</span> · All rights reserved</div>
+</div>
+
+<script>
+let config = {
+  accounts: [
+    {apiId:'', apiHash:'', phone:''},
+    {apiId:'', apiHash:'', phone:''},
+    {apiId:'', apiHash:'', phone:''},
+  ],
+  groups: ["group1","group2","group3","group4","group5","group6","group7","group8","group9"],
+  source: '@source_channel',
+  msgId: '',
+  interval: 50
+};
+
+const TOTAL_DURATION = 3 * 3600;
+let isPaused=false, roundTimer=null, tickTimer=null, pausedMs=0, pauseStart=null;
+let stats = {
+  rounds:0, success:0, failed:0,
+  perGroup: Object.fromEntries(config.groups.map(g=>[g,0])),
+  perAcc:[0,0,0], accIndex:0,
+  startTime:Date.now(), nextRoundIn:50, log:[]
+};
+
+function fmt(n){ return String(n).padStart(2,'0'); }
+function addLog(msg, cls=''){
+  const now = new Date();
+  stats.log.unshift({ts:`${fmt(now.getHours())}:${fmt(now.getMinutes())}:${fmt(now.getSeconds())}`, msg, cls});
+  if(stats.log.length > 60) stats.log.pop();
+}
+
+function switchTab(tab){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+tab).classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(tab==='settings') renderForms();
+}
+
+function renderForms(){
+  const colors=['#00c6ff','#00e676','#b388ff'];
+  document.getElementById('accountsForm').innerHTML = config.accounts.map((acc,i)=>`
+    <div class="acc-setting-row">
+      <div class="acc-num" style="background:${colors[i]}18;color:${colors[i]}">${i+1}</div>
+      <div class="acc-fields">
+        <div class="field-row"><span class="field-label">API ID</span><input class="field-input" id="acc-apiid-${i}" value="${acc.apiId}" placeholder="12345678" type="number"/></div>
+        <div class="field-row"><span class="field-label">API Hash</span><input class="field-input" id="acc-apihash-${i}" value="${acc.apiHash}" placeholder="abcdef1234567890"/></div>
+        <div class="field-row"><span class="field-label">Phone</span><input class="field-input" id="acc-phone-${i}" value="${acc.phone}" placeholder="+1234567890"/></div>
+      </div>
+      <div class="acc-status ${acc.apiId?'active':'inactive'}"></div>
+    </div>`).join('');
+
+  document.getElementById('groupsForm').innerHTML = config.groups.map((g,i)=>`
+    <div class="group-setting-row">
+      <span class="grp-num">${String(i+1).padStart(2,'0')}</span>
+      <input class="grp-input" id="grp-${i}" value="${g}" placeholder="@group_username or -100..."/>
+      <div class="grp-dot"></div>
+    </div>`).join('');
+
+  document.getElementById('sourceInput').value = config.source;
+  document.getElementById('msgIdInput').value = config.msgId;
+  document.getElementById('intervalInput').value = config.interval;
+  updatePreset(config.interval);
+}
+
+function setPreset(v){ document.getElementById('intervalInput').value=v; updatePreset(v); }
+function updatePreset(v){
+  document.querySelectorAll('.preset-btn').forEach(b=>{
+    const bv = b.textContent==='2m'?120:b.textContent==='5m'?300:parseInt(b.textContent);
+    b.classList.toggle('selected', bv===parseInt(v));
+  });
+}
+
+function saveSettings(){
+  config.accounts.forEach((acc,i)=>{
+    acc.apiId   = document.getElementById(`acc-apiid-${i}`)?.value||'';
+    acc.apiHash = document.getElementById(`acc-apihash-${i}`)?.value||'';
+    acc.phone   = document.getElementById(`acc-phone-${i}`)?.value||'';
+  });
+  config.groups   = Array.from({length:9},(_,i)=>document.getElementById(`grp-${i}`)?.value.trim()||`group${i+1}`);
+  config.source   = document.getElementById('sourceInput')?.value||'@source_channel';
+  config.msgId    = document.getElementById('msgIdInput')?.value||'';
+  config.interval = parseInt(document.getElementById('intervalInput')?.value)||50;
+  stats.perGroup  = Object.fromEntries(config.groups.map(g=>[g,0]));
+  document.getElementById('sb-source').textContent   = config.source;
+  document.getElementById('sb-interval').textContent = config.interval+' sec';
+  showToast('✅ Settings saved! Applies on next round.');
+  renderForms();
+}
+
+function resetSettings(){
+  if(!confirm('Reset all settings to default? This cannot be undone.')) return;
+  config.accounts=[{apiId:'',apiHash:'',phone:''},{apiId:'',apiHash:'',phone:''},{apiId:'',apiHash:'',phone:''}];
+  config.groups=["group1","group2","group3","group4","group5","group6","group7","group8","group9"];
+  config.source='@source_channel';
+  config.msgId='';
+  config.interval=50;
+  stats.perGroup=Object.fromEntries(config.groups.map(g=>[g,0]));
+  document.getElementById('sb-source').textContent=config.source;
+  document.getElementById('sb-interval').textContent='50 sec';
+  renderForms();
+  showToast('🔄 Settings reset to default!');
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3200);
+}
+
+function simulateRound(){
+  if(isPaused) return;
+  stats.rounds++;
+  addLog(`🔁 Round ${stats.rounds} started`,'log-info');
+  let delay=0;
+  config.groups.forEach(g=>{
+    setTimeout(()=>{
+      if(isPaused) return;
+      const ai=stats.accIndex%3, fail=Math.random()<0.03;
+      if(!fail){ stats.success++;if(stats.perGroup[g]!==undefined)stats.perGroup[g]++;stats.perAcc[ai]++;addLog(`✅ → ${g} via Acc${ai+1}`,'log-ok'); }
+      else { stats.failed++;addLog(`❌ → ${g} FLOOD WAIT`,'log-fail'); }
+      stats.accIndex++; updateUI();
+    },delay); delay+=800;
+  });
+}
+
+function togglePause(){
+  isPaused=!isPaused;
+  const dim=['c1','c2','c3','c4','p1','p2','p3'];
+  if(isPaused){
+    pauseStart=Date.now(); clearInterval(roundTimer); clearInterval(tickTimer);
+    document.getElementById('pauseBtn').innerHTML='▶ &nbsp;RESUME';
+    document.getElementById('pauseBtn').classList.add('resume');
+    document.getElementById('pauseOverlay').classList.add('show');
+    document.getElementById('liveBadge').style.display='none';
+    document.getElementById('pausedBadge').style.display='inline-block';
+    document.getElementById('statusState').textContent='⏸ PAUSED';
+    document.getElementById('statusState').style.color='var(--z-yellow)';
+    document.getElementById('timerLabel').textContent='paused';
+    document.getElementById('timerRing').style.stroke='var(--z-yellow)';
+    document.getElementById('pauseStatsTxt').textContent=`Round ${stats.rounds}  |  ✅ ${stats.success} forwarded  |  ❌ ${stats.failed} failed`;
+    dim.forEach(id=>document.getElementById(id).classList.add('dimmed'));
+    addLog('⏸ Paused by user','log-warn'); updateUI();
+  } else {
+    if(pauseStart){ pausedMs+=Date.now()-pauseStart; pauseStart=null; }
+    document.getElementById('pauseBtn').innerHTML='⏸ &nbsp;PAUSE';
+    document.getElementById('pauseBtn').classList.remove('resume');
+    document.getElementById('pauseOverlay').classList.remove('show');
+    document.getElementById('liveBadge').style.display='inline-block';
+    document.getElementById('pausedBadge').style.display='none';
+    document.getElementById('statusState').textContent='🟢 RUNNING';
+    document.getElementById('statusState').style.color='var(--z-green)';
+    document.getElementById('timerLabel').textContent='next round in';
+    document.getElementById('timerRing').style.stroke='var(--z-blue)';
+    dim.forEach(id=>document.getElementById(id).classList.remove('dimmed'));
+    addLog('▶ Resumed by user','log-info');
+    stats.nextRoundIn=config.interval;
+    simulateRound();
+    roundTimer=setInterval(simulateRound,config.interval*1000);
+    tickTimer=setInterval(updateTimer,1000);
+    updateUI();
+  }
+}
+
+function updateUI(){
+  const activeMs=Date.now()-stats.startTime-pausedMs-(pauseStart?Date.now()-pauseStart:0);
+  const pct=Math.min(100,(activeMs/1000/TOTAL_DURATION)*100);
+  document.getElementById('rounds').textContent=stats.rounds;
+  document.getElementById('success').textContent=stats.success;
+  document.getElementById('failed').textContent=stats.failed;
+  document.getElementById('total').textContent=stats.success+stats.failed;
+  document.getElementById('progressPct').textContent=pct.toFixed(1)+'%';
+  document.getElementById('progressFill').style.width=pct+'%';
+  const tot=stats.success+stats.failed;
+  const rate=tot>0?(stats.success/tot*100).toFixed(1):'100.0';
+  const re=document.getElementById('successRate');
+  re.textContent=rate+'%';
+  re.style.color=rate>=95?'var(--z-green)':rate>=80?'var(--z-yellow)':'var(--z-red)';
+  const maxG=Math.max(...Object.values(stats.perGroup),1);
+  document.getElementById('groupList').innerHTML=config.groups.map(g=>`
+    <div class="group-row">
+      <span class="group-name">@${g.replace('@','').substring(0,10)}</span>
+      <div class="group-bar-wrap"><div class="group-bar" style="width:${((stats.perGroup[g]||0)/maxG)*100}%"></div></div>
+      <span class="group-count">${stats.perGroup[g]||0}</span>
+    </div>`).join('');
+  const colors=['#00c6ff','#00e676','#b388ff'];
+  document.getElementById('accList').innerHTML=['Account 1','Account 2','Account 3'].map((a,i)=>`
+    <div class="acc-card">
+      <div class="acc-icon" style="background:${colors[i]}18;color:${colors[i]}">👤</div>
+      <div><div class="acc-name">${a}</div><div class="acc-stat">${isPaused?'Idle':'Active'}</div></div>
+      <div class="acc-count" style="color:${colors[i]}">${stats.perAcc[i]}</div>
+    </div>`).join('');
+  document.getElementById('logPanel').innerHTML=stats.log.map(l=>`
+    <div class="log-entry"><span class="log-time">${l.ts}</span><span class="log-msg ${l.cls}">${l.msg}</span></div>`).join('');
+}
+
+function updateTimer(){
+  if(isPaused) return;
+  stats.nextRoundIn--;
+  if(stats.nextRoundIn<0) stats.nextRoundIn=config.interval;
+  document.getElementById('timerRing').style.strokeDashoffset=283*(1-stats.nextRoundIn/config.interval);
+  document.getElementById('nextIn').textContent=stats.nextRoundIn+'s';
+}
+
+const st=new Date(stats.startTime), et=new Date(stats.startTime+TOTAL_DURATION*1000);
+document.getElementById('startTimeDisplay').textContent=`${fmt(st.getHours())}:${fmt(st.getMinutes())}:${fmt(st.getSeconds())}`;
+document.getElementById('endTimeDisplay').textContent=`${fmt(et.getHours())}:${fmt(et.getMinutes())}:${fmt(et.getSeconds())}`;
+addLog('🚀 Forwarder started','log-info');
+updateUI();
+simulateRound();
+roundTimer=setInterval(simulateRound,config.interval*1000);
+tickTimer=setInterval(updateTimer,1000);
+</script>
+
+<!-- ═══════════════════════════════════════════
+     SUPABASE REALTIME CONNECTION
+     Replace SUPABASE_URL and SUPABASE_ANON_KEY
+     with your actual values before deploying
+════════════════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ── PASTE YOUR SUPABASE CREDENTIALS HERE ──
+const SUPABASE_URL  = 'https://aigfvgyoxaxbrwudjaza.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpZ2Z2Z3lveGF4YnJ3dWRqYXphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1MTQyNjcsImV4cCI6MjA4NzA5MDI2N30.8rDD9AXPeIKj3n7NePqxMvzZGZ-BwMPviJbREzmvV5s';
+
+// Only connect if credentials are set
+if (SUPABASE_URL.includes('your-project-id')) {
+  console.warn('⚠️ Supabase not connected. Running in demo mode.');
+} else {
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+  // ── LOAD SETTINGS FROM SUPABASE ──
+  async function loadFromSupabase() {
+    // Load settings
+    const { data: s } = await sb.from('settings').select('*').eq('id',1).single();
+    if (s) {
+      config.source   = s.source_channel || '@source_channel';
+      config.msgId    = s.message_id || '';
+      config.interval = s.interval_seconds || 50;
+      document.getElementById('sb-source').textContent   = config.source;
+      document.getElementById('sb-interval').textContent = config.interval + ' sec';
+    }
+    // Load accounts
+    const { data: accs } = await sb.from('accounts').select('*').order('account_number');
+    if (accs) config.accounts = accs.map(a=>({apiId:a.api_id,apiHash:a.api_hash,phone:a.phone}));
+    // Load groups
+    const { data: grps } = await sb.from('groups').select('*').order('group_number');
+    if (grps) {
+      config.groups = grps.map(g=>g.group_name||`group${g.group_number}`);
+      stats.perGroup = Object.fromEntries(config.groups.map(g=>[g,0]));
+    }
+    // Load stats
+    const { data: st } = await sb.from('stats').select('*').eq('id',1).single();
+    if (st) {
+      stats.rounds  = st.total_rounds  || 0;
+      stats.success = st.total_success || 0;
+      stats.failed  = st.total_failed  || 0;
+      updateUI();
+    }
+    addLog('☁️ Connected to Supabase','log-info');
+  }
+
+  // ── SAVE SETTINGS TO SUPABASE ──
+  const _origSave = saveSettings;
+  saveSettings = async function() {
+    _origSave();
+    await sb.from('settings').update({
+      source_channel:   config.source,
+      message_id:       config.msgId,
+      interval_seconds: config.interval,
+      updated_at:       new Date().toISOString()
+    }).eq('id',1);
+    // Save accounts
+    config.accounts.forEach(async (acc,i) => {
+      await sb.from('accounts').update({
+        api_id:   acc.apiId,
+        api_hash: acc.apiHash,
+        phone:    acc.phone,
+        is_active: !!acc.apiId,
+        updated_at: new Date().toISOString()
+      }).eq('account_number', i+1);
+    });
+    // Save groups
+    config.groups.forEach(async (g,i) => {
+      await sb.from('groups').update({group_name:g}).eq('group_number', i+1);
+    });
+    addLog('☁️ Settings synced to Supabase','log-info');
+  };
+
+  // ── REALTIME: live logs from bot ──
+  sb.channel('logs').on('postgres_changes',
+    {event:'INSERT', schema:'public', table:'logs'},
+    payload => {
+      const d = payload.new;
+      const cls = d.status==='success'?'log-ok':'log-fail';
+      addLog(d.message, cls);
+      if(d.status==='success') { stats.success++; if(stats.perGroup[d.group_name]!==undefined) stats.perGroup[d.group_name]++; }
+      else stats.failed++;
+      updateUI();
+    }
+  ).subscribe();
+
+  // ── REALTIME: live stats from bot ──
+  sb.channel('stats').on('postgres_changes',
+    {event:'UPDATE', schema:'public', table:'stats'},
+    payload => {
+      const d = payload.new;
+      stats.rounds  = d.total_rounds;
+      stats.success = d.total_success;
+      stats.failed  = d.total_failed;
+      updateUI();
+    }
+  ).subscribe();
+
+  // ── PAUSE/RESUME syncs to Supabase so bot pauses too ──
+  const _origToggle = togglePause;
+  togglePause = function() {
+    _origToggle();
+    sb.from('settings').update({
+      is_running: !isPaused,
+      updated_at: new Date().toISOString()
+    }).eq('id',1);
+  };
+
+  loadFromSupabase();
+}
+</script>
+</body>
+</html>
